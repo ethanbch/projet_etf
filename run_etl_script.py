@@ -1,4 +1,4 @@
-import time  # Pour les pauses si besoin
+import time
 
 import pandas as pd
 

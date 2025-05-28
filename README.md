@@ -1,24 +1,58 @@
 # Projet d'Analyse d'ETF
 
-Ce projet permet d'analyser et de comparer des ETF en utilisant des données historiques de Yahoo Finance.
+Application d'analyse et de comparaison d'ETF utilisant des données historiques de Yahoo Finance, avec visualisation interactive via Streamlit.
 
 ## Fonctionnalités
 
-- Analyse individuelle d'ETF (prix, rendements, volatilité)
-- Comparaison d'ETF par thème
-- Visualisation interactive avec Streamlit
-- Stockage des données historiques en local
+### Analyse Individuelle
+
+- Suivi des prix et volumes
+- Calcul des rendements (journaliers et cumulés)
+- Métriques de risque :
+  - Volatilité annualisée
+  - Ratio de Sharpe
+  - Ratio de Sortino
+  - Drawdown maximum
+
+### Comparaison d'ETF
+
+- Performance relative (base 100)
+- Analyse risque/rendement
+- Matrice de corrélation
+- Tableau comparatif des métriques
+- Visualisation radar des performances
+
+### Données et Configuration
+
+- ETL automatisé depuis Yahoo Finance
+- Stockage local SQLite
+- Configuration YAML flexible pour ajouter/modifier les ETF suivis
+
+## Prérequis
+
+- Python 3.10 ou supérieur
+- pip (gestionnaire de paquets Python)
+- Un terminal pour exécuter les commandes
 
 ## Installation
 
-1. Créer un environnement virtuel :
+1. Cloner le dépôt :
+
+```bash
+git clone <url_du_depot>
+cd projet_etf
+```
+
+2. Créer et activer un environnement virtuel :
 
 ```bash
 python -m venv venv
-source venv/bin/activate  # Sur Unix/macOS
+source venv/bin/activate  # Sur macOS/Linux
+# ou
+.\venv\Scripts\activate  # Sur Windows
 ```
 
-2. Installer les dépendances :
+3. Installer les dépendances :
 
 ```bash
 pip install -r requirements.txt
@@ -26,7 +60,7 @@ pip install -r requirements.txt
 
 ## Utilisation
 
-1. Récupérer les données :
+1. Récupérer les données historiques :
 
 ```bash
 python run_etl_script.py
@@ -38,12 +72,38 @@ python run_etl_script.py
 streamlit run main.py
 ```
 
-## Structure du Projet
+3. Accéder à l'interface via votre navigateur
 
-- `config.yaml` : Configuration du projet
-- `config_loader.py` : Chargement de la configuration
-- `etl.py` : Extraction et transformation des données
-- `helpers_analysis.py` : Fonctions d'analyse
-- `main.py` : Point d'entrée de l'application Streamlit
-- `repository.py` : Gestion de la base de données
-- `view.py` : Interface utilisateur
+## Architecture du Projet
+
+```
+projet_etf/
+├── config.yaml           # Configuration des ETF et paramètres
+├── config_loader.py      # Gestion de la configuration
+├── etl.py               # Pipeline d'extraction des données
+├── helpers_analysis.py  # Fonctions d'analyse financière
+├── main.py             # Point d'entrée de l'application
+├── repository.py       # Couche d'accès aux données
+├── view.py            # Interface utilisateur Streamlit
+└── requirements.txt   # Dépendances Python
+```
+
+## 🛠️ Stack Technique
+
+- **Données**: Yahoo Finance (via yfinance)
+- **Base de données**: SQLite
+- **Interface**: Streamlit
+- **Visualisation**: Plotly
+- **Analyse**: Pandas, NumPy
+- **Configuration**: YAML
+
+## 📝 Notes Techniques
+
+- La base de données est créée automatiquement dans le dossier `data/`
+- Architecture en deux tables avec jointure :
+  - `etf_metadata` : Informations descriptives des ETF (ticker, nom, thème)
+  - `etf_prices` : Données historiques de prix
+  - Jointure automatique lors de la récupération des données via le repository
+- Les données sont mises à jour à chaque exécution de l'ETL
+- Le taux sans risque est configurable dans l'interface
+- Périodes d'analyse disponibles : 1m, 3m, 6m, YTD, 1a, 3a, 5a, MAX

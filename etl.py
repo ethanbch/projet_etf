@@ -1,5 +1,5 @@
 """
-Module ETL (Extract, Transform, Load) pour la gestion des données d'ETF.
+Module ETL pour la gestion des données d'ETF.
 Gère l'extraction des données depuis Yahoo Finance, leur transformation
 et leur chargement dans la base de données SQLite.
 """

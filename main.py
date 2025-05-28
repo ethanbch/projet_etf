@@ -9,7 +9,7 @@ from view import display_etf_analysis, display_etf_comparison
 
 def main():
     st.set_page_config(layout="wide", page_title="Analyse d'ETF")
-    st.title("📊 Analyse d'ETF")
+    st.title(" Analyse d'ETF")
 
     try:
         config = load_config()
