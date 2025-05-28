@@ -1,114 +1,164 @@
-"""
-Point d'entrée principal de l'application Streamlit.
-"""
+# main.py
 
-import pandas as pd
+import pandas as pd # Assure-toi que c'est importé
 import streamlit as st
 
-from config_loader import load_config
-from helpers_analysis import get_date_range
+# Assure-toi que tes imports sont corrects et que config_loader est accessible
+from config_loader import load_config # Nécessaire pour initialiser EtfRepository
+from helpers_analysis import get_date_range # Si tu l'utilises toujours ici
 from repository import EtfRepository
 from view import display_etf_analysis, display_etf_comparison
 
 
-def create_etf_labels(config):
-    """Crée un dictionnaire de labels pour les ETF."""
-    return {etf["ticker"]: f"{etf['ticker']} - {etf['name']}" for etf in config["etfs"]}
-
-
 def main():
-    st.title("Analyse d'ETF")
+    st.set_page_config(layout="wide", page_title="Analyse d'ETF") # Ajout d'un titre à la page
+    st.title("📊 Analyse d'ETF")
 
-    # Chargement de la configuration et initialisation
-    config = load_config()
-    repository = EtfRepository(config)
+    # --- Chargement de la configuration et initialisation du Repository ---
+    # Cette partie est cruciale et doit être faite avant d'utiliser le repository
+    try:
+        config = load_config()
+    except FileNotFoundError as e:
+        st.error(f"Erreur de configuration : {e}. Veuillez vous assurer que 'config.yaml' existe.")
+        return # Arrêter si la config n'est pas trouvée
+    
+    repository = EtfRepository(config) # Passe la config chargée
 
-    # Création des labels pour les ETF
-    etf_labels = create_etf_labels(config)
-    tickers = list(etf_labels.keys())
+    # --- Récupération des informations des ETF pour les sélecteurs ---
+    etf_info_df = repository.get_all_etf_info_for_selection()
+    
+    if etf_info_df.empty:
+        st.error("Aucune métadonnée d'ETF trouvée dans la base. "
+                 "Veuillez exécuter le script ETL (`run_etl_script.py`) avant de lancer l'application.")
+        return # Arrêter l'exécution si pas de métadonnées
 
-    # Sidebar pour la navigation
-    page = st.sidebar.radio(
-        "Navigation", ["Analyse individuelle", "Comparaison d'ETFs"]
-    )
+    # Création des labels pour les ETF à partir des données du repository
+    # Format: "TICKER - Nom Complet de l'ETF"
+    etf_labels_map = { # Renommé pour plus de clarté (map de ticker vers label)
+        row["ticker"]: f"{row['ticker']} - {row['name']}"
+        for _, row in etf_info_df.iterrows()
+    }
+    # Liste des labels formatés pour les widgets Streamlit
+    display_labels_options = list(etf_labels_map.values())
+    
+    # Mapping inverse pour retrouver le ticker à partir du label sélectionné
+    ticker_from_label_map = {v: k for k, v in etf_labels_map.items()}
 
-    # Paramètres d'analyse
-    st.sidebar.subheader("Paramètres d'analyse")
 
-    # Sélection de la période
-    periods = ["1m", "3m", "6m", "YTD", "1a", "3a", "5a", "MAX"]
-    selected_period = st.sidebar.select_slider(
-        "Période", options=periods, value="1a"  # Valeur par défaut : 1 an
-    )
+    # --- Sidebar pour la navigation et les paramètres ---
+    with st.sidebar:
+        st.header("Navigation")
+        page = st.radio(
+            "Choisir une page :", ["Analyse individuelle", "Comparaison d'ETFs"], label_visibility="collapsed"
+        )
 
-    # Sélection du taux sans risque
-    risk_free_rate = (
-        st.sidebar.slider(
+        st.divider()
+        st.header("Paramètres d'Analyse")
+
+        # Sélection de la période
+        periods = ["1m", "3m", "6m", "YTD", "1a", "3a", "5a", "MAX"]
+        selected_period_label = st.select_slider( # Renommé pour clarté
+            "Période", 
+            options=periods, 
+            value="1a"  # Valeur par défaut : 1 an
+        )
+
+        # Sélection du taux sans risque
+        risk_free_rate_percentage = st.slider( # Renommé pour clarté
             "Taux sans risque (%)",
             min_value=0.0,
             max_value=5.0,
-            value=2.0,
+            value=2.0, # Taux par défaut en pourcentage
             step=0.1,
-            help="Taux utilisé pour le calcul du ratio de Sharpe",
+            help="Taux annuel utilisé pour le calcul des ratios de Sharpe et Sortino.",
         )
-        / 100
-    )  # Conversion en décimal
+        risk_free_rate_decimal = risk_free_rate_percentage / 100  # Conversion en décimal pour les calculs
 
-    # Calcul des dates en fonction de la période
-    start_date, end_date = get_date_range(selected_period)
+    # Calcul des dates en fonction de la période sélectionnée
+    # Note: get_date_range doit retourner des objets datetime
+    start_date_dt, end_date_dt = get_date_range(selected_period_label) 
+    # Conversion en string pour les requêtes SQL si repository.get_etf_data les attend en string
+    start_date_str = start_date_dt.strftime("%Y-%m-%d")
+    end_date_str = end_date_dt.strftime("%Y-%m-%d")
+    
+    st.caption(f"Période d'analyse sélectionnée : du {start_date_str} au {end_date_str} (Taux sans risque : {risk_free_rate_percentage:.1f}%)")
 
+
+    # --- Logique d'affichage des pages ---
     if page == "Analyse individuelle":
-        # Sélection de l'ETF avec nom complet
-        selected_label = st.sidebar.selectbox(
-            "Sélectionner un ETF", options=[etf_labels[ticker] for ticker in tickers]
-        )
-        selected_ticker = selected_label.split(" - ")[0]  # Récupère le ticker
-
-        # Récupération et affichage des données
-        etf_data = repository.get_etf_data(
-            selected_ticker,
-            start_date.strftime("%Y-%m-%d"),
-            end_date.strftime("%Y-%m-%d"),
-        )
-        if not etf_data.empty:
-            display_etf_analysis(etf_data, selected_label, risk_free_rate)
+        if not display_labels_options:
+             st.warning("Aucun ETF disponible pour la sélection.")
         else:
-            st.error("Aucune donnée disponible pour cet ETF.")
+            selected_display_label = st.sidebar.selectbox( # Renommé pour clarté
+                "Sélectionner un ETF", 
+                options=display_labels_options 
+            )
+            if selected_display_label: # S'assurer qu'une sélection a été faite
+                selected_ticker = ticker_from_label_map[selected_display_label]
 
-    else:  # Comparaison d'ETFs
-        # Sélection multiple d'ETFs avec noms complets
-        selected_labels = st.sidebar.multiselect(
-            "Sélectionner les ETFs à comparer",
-            options=[etf_labels[ticker] for ticker in tickers],
-            default=[
-                etf_labels[tickers[0]],
-                etf_labels[tickers[1]],
-            ],  # Les 2 premiers par défaut
-        )
-        selected_tickers = [
-            label.split(" - ")[0] for label in selected_labels
-        ]  # Récupère les tickers
-
-        if len(selected_tickers) < 2:
-            st.warning("Veuillez sélectionner au moins 2 ETFs pour la comparaison.")
-        else:
-            # Récupération des données pour tous les ETFs sélectionnés
-            comparison_data = pd.DataFrame()
-            for ticker in selected_tickers:
-                data = repository.get_etf_data(
-                    ticker,
-                    start_date.strftime("%Y-%m-%d"),
-                    end_date.strftime("%Y-%m-%d"),
+                # Récupération et affichage des données
+                # repository.get_etf_data attend des strings pour les dates
+                etf_data_for_analysis = repository.get_etf_data(
+                    selected_ticker,
+                    start_date_str,
+                    end_date_str,
                 )
-                if not data.empty:
-                    comparison_data = pd.concat([comparison_data, data])
-
-            if not comparison_data.empty:
-                display_etf_comparison(
-                    comparison_data, selected_tickers, risk_free_rate
-                )
+                if not etf_data_for_analysis.empty:
+                    # display_etf_analysis attend le label complet pour l'affichage du titre
+                    display_etf_analysis(etf_data_for_analysis, selected_display_label, risk_free_rate_decimal)
+                else:
+                    st.error(f"Aucune donnée disponible pour {selected_display_label} sur la période sélectionnée.")
             else:
-                st.error("Aucune donnée disponible pour les ETFs sélectionnés.")
+                st.info("Veuillez sélectionner un ETF.")
+
+
+    elif page == "Comparaison d'ETFs": 
+        if not display_labels_options or len(display_labels_options) < 2:
+            st.warning("Pas assez d'ETFs disponibles pour la comparaison (minimum 2 requis).")
+        else:
+            # Sélection multiple d'ETFs avec noms complets
+            # Définir des valeurs par défaut pour le multiselect
+            default_multiselect_labels = []
+            if len(display_labels_options) >= 1:
+                default_multiselect_labels.append(display_labels_options[0])
+            if len(display_labels_options) >= 2:
+                default_multiselect_labels.append(display_labels_options[1])
+
+            selected_display_labels_multi = st.sidebar.multiselect( # Renommé pour clarté
+                "Sélectionner les ETFs à comparer",
+                options=display_labels_options,
+                default=default_multiselect_labels 
+            )
+            
+            if not selected_display_labels_multi:
+                st.info("Veuillez sélectionner au moins un ETF pour la comparaison.")
+            elif len(selected_display_labels_multi) < 2:
+                st.warning("Veuillez sélectionner au moins 2 ETFs pour une comparaison pertinente.")
+            else:
+                selected_tickers_multi = [ticker_from_label_map[label] for label in selected_display_labels_multi] 
+
+                # Récupération des données pour tous les ETFs sélectionnés
+                comparison_data_list = [] # Pour stocker les DataFrames de chaque ETF
+                for ticker in selected_tickers_multi:
+                    data = repository.get_etf_data(
+                        ticker,
+                        start_date_str,
+                        end_date_str,
+                    )
+                    if not data.empty:
+                        comparison_data_list.append(data)
+                
+                if comparison_data_list:
+                    # Concaténer tous les DataFrames obtenus
+                    all_comparison_data_df = pd.concat(comparison_data_list, ignore_index=True)
+                    if not all_comparison_data_df.empty:
+                        display_etf_comparison(
+                            all_comparison_data_df, selected_tickers_multi, risk_free_rate_decimal
+                        )
+                    else:
+                        st.error("Les données concaténées pour la comparaison sont vides.")
+                else:
+                    st.error("Aucune donnée disponible pour les ETFs sélectionnés sur la période.")
 
 
 if __name__ == "__main__":

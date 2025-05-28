@@ -1,71 +1,103 @@
-"""
-Module ETL pour l'extraction et la transformation des données d'ETF.
-"""
+# etl.py
 
 from datetime import datetime
-from typing import Dict, List
+from typing import Dict, List, Tuple 
 
 import pandas as pd
 import yfinance as yf
 
-from config_loader import Config, EtfConfig
+from config_loader import Config, EtfConfig 
 
 
 def extract_etf_data(ticker: str, start_date: str, end_date: str) -> pd.DataFrame:
     """Extrait les données historiques d'un ETF depuis Yahoo Finance."""
+    print(f"  Tentative d'extraction pour {ticker} de {start_date} à {end_date}...")
     etf = yf.Ticker(ticker)
-    df = etf.history(start=start_date, end=end_date)
-
-    if df.empty:
-        print(f"Attention : Aucune donnée trouvée pour {ticker}")
+    try:
+        df = etf.history(start=start_date, end=end_date)
+        if df.empty:
+            print(f"  Attention : Aucune donnée trouvée pour {ticker} pour la période spécifiée.")
+            return pd.DataFrame()
+        # S'assurer que l'index est bien datetime et sans timezone pour la compatibilité SQLite
+        if isinstance(df.index, pd.DatetimeIndex):
+            df.index = df.index.tz_localize(None)
+        print(f"  Données extraites pour {ticker}: {len(df)} lignes.")
+        return df
+    except Exception as e:
+        print(f"  Erreur lors de l'extraction pour {ticker}: {e}")
         return pd.DataFrame()
 
-    return df
 
+def transform_price_data(df_raw: pd.DataFrame, ticker: str) -> pd.DataFrame:
+    """Transforme les données brutes de prix en format standardisé pour la table des prix."""
+    if df_raw.empty:
+        return pd.DataFrame()
 
-def transform_etf_data(df: pd.DataFrame, etf_info: EtfConfig) -> pd.DataFrame:
-    """Transforme les données brutes en format standardisé."""
-    if df.empty:
-        return df
-
-    # Reset index pour avoir la date comme colonne
-    df = df.reset_index()
+    df = df_raw.reset_index().copy() 
 
     # Standardisation des noms de colonnes
-    df = df.rename(
-        columns={
-            "Date": "date",
-            "Open": "open",
-            "High": "high",
-            "Low": "low",
-            "Close": "close",
-            "Volume": "volume",
-            "Dividends": "dividends",
-            "Stock Splits": "stock_splits",
-            "Capital Gains": "capital_gains",
-        }
-    )
+    rename_map = {
+        "Date": "date",
+        "Open": "open",
+        "High": "high",
+        "Low": "low",
+        "Close": "close",
+        "Volume": "volume",
+        "Dividends": "dividends",
+        "Stock Splits": "stock_splits",
+    }
+    df = df.rename(columns=rename_map)
 
-    # Ajout des informations de l'ETF
-    df["ticker"] = etf_info["ticker"]
-    df["name"] = etf_info["name"]
-    df["theme"] = etf_info["theme"]
+    # Gérer l'absence de 'Capital Gains' qui est souvent problématique avec yfinance
+    if "Capital Gains" in df_raw.columns: # Vérifier sur df_raw avant renommage car 'Capital Gains' peut ne pas être dans rename_map
+        df["capital_gains"] = df_raw["Capital Gains"]
+    elif "capital_gains" not in df.columns: # Si elle n'a pas été créée par un autre moyen
+        df["capital_gains"] = 0.0 
 
-    return df
+    df["ticker"] = ticker
+    
+    # Sélectionner uniquement les colonnes qui seront dans la table etf_prices
+    # Assure-toi que ces noms de colonnes correspondent à ceux définis dans repository.py pour la table etf_prices
+    price_columns = ["date", "ticker", "open", "high", "low", "close", "volume", "dividends", "stock_splits", "capital_gains"]
+    
+    # Garder seulement les colonnes existantes pour éviter les erreurs
+    existing_price_columns = [col for col in price_columns if col in df.columns]
+    
+    return df[existing_price_columns]
 
 
-def process_all_etfs(config: Config) -> Dict[str, pd.DataFrame]:
-    """Traite tous les ETF configurés."""
+def process_all_etfs(config: Config) -> Tuple[pd.DataFrame, List[pd.DataFrame]]:
+    """
+    Traite tous les ETF configurés.
+    Retourne un DataFrame pour les métadonnées et une liste de DataFrames pour les prix.
+    """
     start_date = config["date_range"]["start"]
     end_date = config["date_range"]["end"]
 
-    results = {}
-    for etf in config["etfs"]:
-        print(f"Extraction des données pour {etf['ticker']}...")
-        raw_data = extract_etf_data(etf["ticker"], start_date, end_date)
+    all_metadata_list = []
+    all_prices_dfs_list = []
+
+    print(f"Début du traitement des ETFs configurés (de {start_date} à {end_date})...")
+    for etf_config_item in config["etfs"]: # etf_config_item est un EtfConfig (TypedDict)
+        ticker = etf_config_item["ticker"]
+        
+        # Préparation des métadonnées
+        all_metadata_list.append({
+            "ticker": ticker,
+            "name": etf_config_item["name"],
+            "theme": etf_config_item["theme"]
+        })
+
+        print(f"Traitement de {ticker}...")
+        raw_data = extract_etf_data(ticker, start_date, end_date)
 
         if not raw_data.empty:
-            processed_data = transform_etf_data(raw_data, etf)
-            results[etf["ticker"]] = processed_data
-
-    return results
+            price_data = transform_price_data(raw_data, ticker)
+            if not price_data.empty:
+                all_prices_dfs_list.append(price_data)
+        else:
+            # Déjà loggé dans extract_etf_data
+            pass
+            
+    df_metadata = pd.DataFrame(all_metadata_list)
+    return df_metadata, all_prices_dfs_list
