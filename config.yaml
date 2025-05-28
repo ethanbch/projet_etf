@@ -6,7 +6,7 @@ database:
 
 # Paramètres de données historiques
 date_range:
-  start: "2020-01-01"
+  start: "2010-01-01"
   end: "2025-05-28"
 
 # Liste des ETF à suivre

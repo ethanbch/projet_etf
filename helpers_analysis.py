@@ -24,6 +24,8 @@ def get_date_range(period: str) -> Tuple[datetime, datetime]:
         start_date = datetime(end_date.year, 1, 1)
     elif period == "1a":
         start_date = end_date - timedelta(days=365)
+    elif period == "3a":
+        start_date = end_date - timedelta(days=365 * 3)
     elif period == "5a":
         start_date = end_date - timedelta(days=365 * 5)
     elif period == "MAX":

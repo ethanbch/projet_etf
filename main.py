@@ -36,7 +36,7 @@ def main():
     st.sidebar.subheader("Paramètres d'analyse")
 
     # Sélection de la période
-    periods = ["1m", "3m", "6m", "YTD", "1a", "5a", "MAX"]
+    periods = ["1m", "3m", "6m", "YTD", "1a", "3a", "5a", "MAX"]
     selected_period = st.sidebar.select_slider(
         "Période", options=periods, value="1a"  # Valeur par défaut : 1 an
     )

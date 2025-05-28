@@ -57,6 +57,10 @@ def display_etf_analysis(df: pd.DataFrame, etf_label: str, risk_free_rate: float
     with col4:
         st.metric("Ratio de Sharpe", f"{sharpe:.2f}")
 
+    st.caption(
+        "Pour le calcul du ratio de Sharpe et du rendement annualisé, il faut sélectionner une période d'au moins 1 an."
+    )
+
 
 def display_etf_comparison(df: pd.DataFrame, tickers: List[str], risk_free_rate: float):
     """Affiche la comparaison entre plusieurs ETF."""
