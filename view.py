@@ -70,7 +70,12 @@ def display_etf_analysis(df: pd.DataFrame, etf_label: str, risk_free_rate: float
         st.metric("Ratio de Sharpe", f"{sharpe:.2f}")
 
     st.caption(
-        "Pour le calcul du ratio de Sharpe et du rendement annualisé, il faut sélectionner une période d'au moins 1 an."
+        """Pour les calculs avec une période inférieure à 1 an :        
+        - Le rendement annualisé est une projection sur un an basée sur la performance observée     
+        - La volatilité annualisée est ajustée en fonction de la longueur réelle de la période       
+        - Le ratio de Sharpe utilise ces métriques ajustées pour rester cohérent        
+    Plus la période est courte, plus ces projections sont hypothétiques.
+    """
     )
 
 

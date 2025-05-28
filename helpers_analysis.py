@@ -7,6 +7,7 @@ from typing import List, Tuple
 
 import numpy as np
 import pandas as pd
+from dateutil.relativedelta import relativedelta
 
 
 def get_date_range(period: str) -> Tuple[datetime, datetime]:
@@ -75,7 +76,18 @@ def calculate_volatility(returns: pd.Series, window: int = 252) -> pd.Series:
     :return: Série de la volatilité glissante annualisée
     :rtype: pd.Series
     """
-    return returns.rolling(window=window).std() * np.sqrt(window)
+    # Si nous avons moins de données que la fenêtre, ajuster la fenêtre
+    if len(returns) < window:
+        window = len(returns)
+        if window == 0:
+            return pd.Series(index=returns.index)
+
+    # Calculer la volatilité avec la fenêtre ajustée
+    volatility = returns.rolling(window=window, min_periods=window // 2).std()
+
+    # Annualiser la volatilité en tenant compte de la fenêtre réelle
+    annualization_factor = np.sqrt(252 / (window / len(returns) * 252))
+    return volatility * np.sqrt(252) * annualization_factor
 
 
 def calculate_sharpe_ratio(
@@ -92,10 +104,30 @@ def calculate_sharpe_ratio(
     :return: Série du ratio de Sharpe glissant
     :rtype: pd.Series
     """
-    excess_returns = returns - risk_free_rate / window
-    return (excess_returns.rolling(window=window).mean() * window) / (
-        returns.rolling(window=window).std() * np.sqrt(window)
+    # Ajuster la fenêtre si nécessaire
+    if len(returns) < window:
+        window = len(returns)
+        if window == 0:
+            return pd.Series(index=returns.index)
+
+    # Calculer les rendements excédentaires annualisés
+    excess_returns = (
+        returns - risk_free_rate / 252
+    )  # Diviser par 252 pour avoir le taux journalier
+
+    # Calculer la moyenne mobile des rendements excédentaires
+    mean_excess_returns = (
+        excess_returns.rolling(window=window, min_periods=window // 2).mean() * 252
     )
+
+    # Calculer la volatilité
+    volatility = calculate_volatility(returns, window)
+
+    # Éviter la division par zéro
+    volatility = volatility.replace(0, np.nan)
+
+    # Calculer le ratio de Sharpe
+    return mean_excess_returns / volatility
 
 
 def calculate_sortino_ratio(
