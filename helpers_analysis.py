@@ -2,10 +2,34 @@
 Module contenant les fonctions d'analyse pour les ETF.
 """
 
-from typing import List
+from datetime import datetime, timedelta
+from typing import List, Tuple
 
 import numpy as np
 import pandas as pd
+
+
+def get_date_range(period: str) -> Tuple[datetime, datetime]:
+    """Calcule les dates de début et fin en fonction de la période sélectionnée."""
+    end_date = datetime.now()
+    start_date = end_date  # sera modifié ci-dessous
+
+    if period == "1m":
+        start_date = end_date - timedelta(days=30)
+    elif period == "3m":
+        start_date = end_date - timedelta(days=90)
+    elif period == "6m":
+        start_date = end_date - timedelta(days=180)
+    elif period == "YTD":
+        start_date = datetime(end_date.year, 1, 1)
+    elif period == "1a":
+        start_date = end_date - timedelta(days=365)
+    elif period == "5a":
+        start_date = end_date - timedelta(days=365 * 5)
+    elif period == "MAX":
+        start_date = datetime(2000, 1, 1)  # Une date suffisamment ancienne
+
+    return start_date, end_date
 
 
 def calculate_returns(prices: pd.Series) -> pd.Series:

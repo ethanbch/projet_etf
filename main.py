@@ -2,12 +2,11 @@
 Point d'entrée principal de l'application Streamlit.
 """
 
-from datetime import datetime
-
 import pandas as pd
 import streamlit as st
 
 from config_loader import load_config
+from helpers_analysis import get_date_range
 from repository import EtfRepository
 from view import display_etf_analysis, display_etf_comparison
 
@@ -25,17 +24,13 @@ def main():
     )
 
     # Sélection de la période
-    col1, col2 = st.sidebar.columns(2)
-    with col1:
-        start_date = st.date_input(
-            "Date de début",
-            datetime.strptime(config["date_range"]["start"], "%Y-%m-%d").date(),
-        )
-    with col2:
-        end_date = st.date_input(
-            "Date de fin",
-            datetime.strptime(config["date_range"]["end"], "%Y-%m-%d").date(),
-        )
+    periods = ["1m", "3m", "6m", "YTD", "1a", "5a", "MAX"]
+    selected_period = st.sidebar.select_slider(
+        "Période", options=periods, value="1a"  # Valeur par défaut : 1 an
+    )
+
+    # Calcul des dates en fonction de la période
+    start_date, end_date = get_date_range(selected_period)
 
     if page == "Analyse individuelle":
         # Sélection de l'ETF
