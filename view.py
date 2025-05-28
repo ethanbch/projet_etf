@@ -4,13 +4,13 @@ Module de visualisation utilisant Streamlit.
 
 from typing import List
 
+import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
 from helpers_analysis import (
-    calculate_correlation_matrix,
     calculate_cumulative_returns,
     calculate_returns,
     calculate_volatility,
@@ -56,7 +56,14 @@ def display_etf_comparison(df: pd.DataFrame, tickers: List[str]):
     st.subheader("Comparaison des ETF")
 
     # Onglets pour différentes visualisations
-    tab1, tab2, tab3 = st.tabs(["Performance relative", "Corrélations", "Métriques"])
+    tab1, tab2, tab3, tab4 = st.tabs(
+        [
+            "Performance relative",
+            "Performance vs Volatilité",
+            "Corrélations",
+            "Métriques",
+        ]
+    )
 
     with tab1:
         # Normalisation des prix et graphique comparatif
@@ -77,6 +84,42 @@ def display_etf_comparison(df: pd.DataFrame, tickers: List[str]):
         st.plotly_chart(fig)
 
     with tab2:
+        # Graphique Performance vs Volatilité
+        risk_return_data = []
+        for ticker in tickers:
+            etf_data = df[df["ticker"] == ticker]["close"]
+            returns = calculate_returns(etf_data)
+            annualized_return = returns.mean() * 252
+            annualized_volatility = returns.std() * np.sqrt(252)
+            risk_return_data.append(
+                {
+                    "ETF": ticker,
+                    "Volatilité annualisée (%)": annualized_volatility * 100,
+                    "Rendement annualisé (%)": annualized_return * 100,
+                }
+            )
+
+        risk_return_df = pd.DataFrame(risk_return_data)
+
+        fig = px.scatter(
+            risk_return_df,
+            x="Volatilité annualisée (%)",
+            y="Rendement annualisé (%)",
+            text="ETF",
+            title="Rendement vs Risque",
+        )
+        fig.update_traces(textposition="top center", marker=dict(size=12))
+        fig.add_shape(
+            type="line",
+            x0=0,
+            y0=0,
+            x1=risk_return_df["Volatilité annualisée (%)"].max(),
+            y1=0,
+            line=dict(color="gray", dash="dash"),
+        )
+        st.plotly_chart(fig)
+
+    with tab3:
         # Matrice de corrélation
         returns_df = df.pivot(columns="ticker", values="close").pct_change().dropna()
         corr_matrix = returns_df.corr()
@@ -90,7 +133,7 @@ def display_etf_comparison(df: pd.DataFrame, tickers: List[str]):
         fig.update_layout(title="Matrice de corrélation")
         st.plotly_chart(fig)
 
-    with tab3:
+    with tab4:
         # Tableau comparatif des métriques
         comparison_data = []
         for ticker in tickers:
