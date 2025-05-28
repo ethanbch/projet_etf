@@ -80,13 +80,13 @@ streamlit run main.py
 
 ## Architecture du Projet
 
-config.yaml : Configuration des ETF et paramètres
-config_loader.py : Gestion de la configuration
-etl.py : Pipeline d'extraction des données
-helpers_analysis.py : Fonctions d'analyse financière
-main.py : Point d'entrée de l'application
-repository.py : Couche d'accès aux données
-view.py : Interface utilisateur Streamlit
+config.yaml : Configuration des ETF et paramètres  
+config_loader.py : Gestion de la configuration  
+etl.py : Pipeline d'extraction des données  
+helpers_analysis.py : Fonctions d'analyse financière  
+main.py : Point d'entrée de l'application  
+repository.py : Couche d'accès aux données  
+view.py : Interface utilisateur Streamlit  
 requirements.txt : Dépendances Python
 
 ## 🛠️ Stack Technique
