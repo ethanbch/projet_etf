@@ -11,9 +11,13 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from helpers_analysis import (
+    calculate_beta,
     calculate_cumulative_returns,
+    calculate_max_drawdown,
     calculate_returns,
     calculate_sharpe_ratio,
+    calculate_sortino_ratio,
+    calculate_tracking_error,
     calculate_volatility,
     normalize_prices,
 )
@@ -163,23 +167,57 @@ def display_etf_comparison(df: pd.DataFrame, tickers: List[str], risk_free_rate:
         st.plotly_chart(fig)
 
     with tab4:
-        # Tableau comparatif des métriques
-        comparison_data = []
-        for ticker in tickers:
-            etf_data = df[df["ticker"] == ticker]["close"]
-            returns = calculate_returns(etf_data)
-            cum_returns = calculate_cumulative_returns(etf_data)
-            volatility = calculate_volatility(returns)
-            sharpe = calculate_sharpe_ratio(returns, risk_free_rate).iloc[-1]
+        st.subheader("Métriques de comparaison")
 
-            comparison_data.append(
+        # Récupération des données du SPY pour le calcul du beta
+        spy_data = df[df["ticker"] == "SPY"].copy()
+        spy_data.set_index("date", inplace=True)
+        spy_returns = calculate_returns(spy_data["close"])
+
+        # Préparation des données pour le tableau
+        metrics_data = []
+
+        for ticker in tickers:
+            etf_data = df[df["ticker"] == ticker].copy()
+            etf_data.set_index("date", inplace=True)
+            returns = calculate_returns(etf_data["close"])
+
+            # Calcul des métriques
+            volatility = calculate_volatility(returns).iloc[-1]
+            sharpe = calculate_sharpe_ratio(returns, risk_free_rate).iloc[-1]
+            sortino = calculate_sortino_ratio(returns, risk_free_rate).iloc[-1]
+            max_dd = calculate_max_drawdown(etf_data["close"])
+            beta = calculate_beta(returns, spy_returns).iloc[-1]
+            tracking_error = calculate_tracking_error(returns, spy_returns).iloc[-1]
+            ann_return = returns.mean() * 252
+
+            metrics_data.append(
                 {
                     "ETF": f"{ticker} - {etf_names[ticker]}",
-                    "Rendement total": f"{cum_returns.iloc[-1]:.2%}",
-                    "Rendement annualisé": f"{returns.mean() * 252:.2%}",
-                    "Volatilité annualisée": f"{volatility.iloc[-1]:.2%}",
+                    "Rendement annualisé": f"{ann_return:.2%}",
+                    "Volatilité": f"{volatility:.2%}",
                     "Ratio de Sharpe": f"{sharpe:.2f}",
+                    "Ratio de Sortino": f"{sortino:.2f}",
+                    "Drawdown Max": f"{max_dd:.2%}",
+                    "Beta vs SPY": f"{beta:.2f}",
+                    "Tracking Error": f"{tracking_error:.2%}",
                 }
             )
 
-        st.table(pd.DataFrame(comparison_data))
+        # Affichage du tableau des métriques
+        metrics_df = pd.DataFrame(metrics_data)
+        st.dataframe(metrics_df.set_index("ETF"), use_container_width=True)
+
+        # Légende des métriques
+        st.caption(
+            """
+        - Rendement annualisé : performance moyenne sur un an
+        - Volatilité : mesure de la variation des rendements
+        - Ratio de Sharpe : rendement ajusté du risque (> 1 est bon)
+        - Ratio de Sortino : comme Sharpe mais ne pénalise que les pertes
+        - Drawdown Max : perte maximale sur la période
+        - Beta vs SPY : sensibilité aux mouvements du S&P 500 (1 = même sensibilité)
+        - Tracking Error : écart de suivi par rapport au S&P 500
+        - Si certaines métriques sont NaN, essayer de bouger la période et/ou le taux sans risque.
+        """
+        )

@@ -60,6 +60,40 @@ def calculate_sharpe_ratio(
     )
 
 
+def calculate_sortino_ratio(
+    returns: pd.Series, risk_free_rate: float = 0.02, window: int = 252
+) -> pd.Series:
+    """Calcule le ratio de Sortino glissant (comme Sharpe mais ne pénalise que la volatilité négative)."""
+    excess_returns = returns - risk_free_rate / window
+    downside_returns = returns.copy()
+    downside_returns[downside_returns > 0] = 0
+    downside_std = downside_returns.rolling(window=window).std() * np.sqrt(window)
+    return (excess_returns.rolling(window=window).mean() * window) / downside_std
+
+
+def calculate_max_drawdown(prices: pd.Series) -> float:
+    """Calcule le drawdown maximum sur toute la période."""
+    rolling_max = prices.expanding().max()
+    drawdowns = prices / rolling_max - 1
+    return drawdowns.min()
+
+
+def calculate_beta(
+    returns: pd.Series, market_returns: pd.Series, window: int = 252
+) -> pd.Series:
+    """Calcule le beta glissant par rapport au marché (SPY)."""
+    covariance = returns.rolling(window=window).cov(market_returns)
+    market_variance = market_returns.rolling(window=window).var()
+    return covariance / market_variance
+
+
+def calculate_tracking_error(
+    returns: pd.Series, benchmark_returns: pd.Series, window: int = 252
+) -> pd.Series:
+    """Calcule l'erreur de suivi (tracking error) par rapport à un benchmark."""
+    return (returns - benchmark_returns).rolling(window=window).std() * np.sqrt(window)
+
+
 def normalize_prices(df: pd.DataFrame, tickers: List[str]) -> pd.DataFrame:
     """Normalise les prix de plusieurs ETF pour comparaison."""
     df = df.sort_values(
@@ -79,3 +113,37 @@ def normalize_prices(df: pd.DataFrame, tickers: List[str]) -> pd.DataFrame:
 def calculate_correlation_matrix(returns_df: pd.DataFrame) -> pd.DataFrame:
     """Calcule la matrice de corrélation entre les ETF."""
     return returns_df.pivot(columns="ticker", values="close").pct_change().corr()
+
+
+def calculate_sortino_ratio(
+    returns: pd.Series, risk_free_rate: float = 0.02, window: int = 252
+) -> pd.Series:
+    """Calcule le ratio de Sortino glissant (comme Sharpe mais ne pénalise que la volatilité négative)."""
+    excess_returns = returns - risk_free_rate / window
+    downside_returns = returns.copy()
+    downside_returns[downside_returns > 0] = 0
+    downside_std = downside_returns.rolling(window=window).std() * np.sqrt(window)
+    return (excess_returns.rolling(window=window).mean() * window) / downside_std
+
+
+def calculate_max_drawdown(prices: pd.Series) -> float:
+    """Calcule le drawdown maximum sur toute la période."""
+    rolling_max = prices.expanding().max()
+    drawdowns = prices / rolling_max - 1
+    return drawdowns.min()
+
+
+def calculate_beta(
+    returns: pd.Series, market_returns: pd.Series, window: int = 252
+) -> pd.Series:
+    """Calcule le beta glissant par rapport au marché (SPY)."""
+    covariance = returns.rolling(window=window).cov(market_returns)
+    market_variance = market_returns.rolling(window=window).var()
+    return covariance / market_variance
+
+
+def calculate_tracking_error(
+    returns: pd.Series, benchmark_returns: pd.Series, window: int = 252
+) -> pd.Series:
+    """Calcule l'erreur de suivi (tracking error) par rapport à un benchmark."""
+    return (returns - benchmark_returns).rolling(window=window).std() * np.sqrt(window)
