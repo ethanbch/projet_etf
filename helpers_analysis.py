@@ -144,11 +144,34 @@ def calculate_sortino_ratio(
     :return: Série du ratio de Sortino glissant
     :rtype: pd.Series
     """
-    excess_returns = returns - risk_free_rate / window
+    # Ajuster la fenêtre si nécessaire
+    if len(returns) < window:
+        window = len(returns)
+        if window == 0:
+            return pd.Series(index=returns.index)
+
+    # Calculer les rendements excédentaires annualisés
+    excess_returns = (
+        returns - risk_free_rate / 252
+    )  # Diviser par 252 pour avoir le taux journalier
+
+    # Calculer la moyenne mobile des rendements excédentaires annualisés
+    mean_excess_returns = (
+        excess_returns.rolling(window=window, min_periods=window // 2).mean() * 252
+    )
+
+    # Calculer la volatilité baissière annualisée
     downside_returns = returns.copy()
     downside_returns[downside_returns > 0] = 0
-    downside_std = downside_returns.rolling(window=window).std() * np.sqrt(window)
-    return (excess_returns.rolling(window=window).mean() * window) / downside_std
+    downside_std = downside_returns.rolling(
+        window=window, min_periods=window // 2
+    ).std() * np.sqrt(252)
+
+    # Éviter la division par zéro
+    downside_std = downside_std.replace(0, np.nan)
+
+    # Calculer le ratio de Sortino
+    return mean_excess_returns / downside_std
 
 
 def calculate_max_drawdown(prices: pd.Series) -> float:

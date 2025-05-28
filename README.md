@@ -6,45 +6,13 @@ Application d'analyse et de comparaison d'ETF utilisant des données historiques
 
 https://github.com/ethanbch/projet_etf/tree/master
 
-## Fonctionnalités
-
-### Analyse Individuelle
-
-- Suivi des prix et volumes
-- Calcul des rendements (journaliers et cumulés)
-- Métriques de risque :
-  - Volatilité annualisée
-  - Ratio de Sharpe
-  - Ratio de Sortino
-  - Drawdown maximum
-
-### Comparaison d'ETF
-
-- Performance relative (base 100)
-- Analyse risque/rendement
-- Matrice de corrélation
-- Tableau comparatif des métriques
-- Visualisation radar des performances
-
-### Données et Configuration
-
-- ETL automatisé depuis Yahoo Finance
-- Stockage local SQLite
-- Configuration YAML flexible pour ajouter/modifier les ETF suivis
-
-## Prérequis
-
-- Python 3.10 ou supérieur
-- pip (gestionnaire de paquets Python)
-- Un terminal pour exécuter les commandes
-
 ## Installation
 
 1. Cloner le dépôt :
 
 ```bash
 git clone <url_du_depot>
-cd projet_etf
+cd projet_etf # ou en tout cas le chemin où vous avez mis le dossier
 ```
 
 2. Créer et activer un environnement virtuel :
@@ -77,6 +45,38 @@ streamlit run main.py
 ```
 
 3. Accéder à l'interface via votre navigateur
+
+## Fonctionnalités
+
+### Analyse Individuelle
+
+- Suivi des prix et volumes
+- Calcul des rendements (journaliers et cumulés)
+- Métriques de risque :
+  - Volatilité annualisée
+  - Ratio de Sharpe
+  - Ratio de Sortino
+  - Drawdown maximum
+
+### Comparaison d'ETF
+
+- Performance relative (base 100)
+- Analyse risque/rendement
+- Matrice de corrélation
+- Tableau comparatif des métriques
+- Visualisation radar des performances
+
+### Données et Configuration
+
+- ETL automatisé depuis Yahoo Finance
+- Stockage local SQLite
+- Configuration YAML flexible pour ajouter/modifier les ETF suivis
+
+## Prérequis
+
+- Python 3.10 ou supérieur
+- pip (gestionnaire de paquets Python)
+- Un terminal pour exécuter les commandes
 
 ## Architecture du Projet
 
