@@ -139,6 +139,10 @@ def display_etf_comparison(df: pd.DataFrame, tickers: List[str], risk_free_rate:
         returns_df = df.pivot(columns="ticker", values="close").pct_change().dropna()
         corr_matrix = returns_df.corr()
 
+        st.caption(
+            "Une corrélation proche de 1 indique que les ETFs évoluent de manière similaire, proche de -1 de manière opposée, et proche de 0 de manière indépendante."
+        )
+
         # Renommer les colonnes/index avec les noms complets
         corr_matrix.columns = [
             f"{ticker} - {etf_names[ticker]}" for ticker in corr_matrix.columns
