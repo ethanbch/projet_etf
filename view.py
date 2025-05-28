@@ -208,6 +208,56 @@ def display_etf_comparison(df: pd.DataFrame, tickers: List[str], risk_free_rate:
         metrics_df = pd.DataFrame(metrics_data)
         st.dataframe(metrics_df.set_index("ETF"), use_container_width=True)
 
+        # Graphique radar des métriques
+        # Préparation des données pour le radar
+        radar_metrics = [
+            "Rendement annualisé",
+            "Volatilité",
+            "Ratio de Sharpe",
+            "Ratio de Sortino",
+            "Beta vs SPY",
+            "Tracking Error",
+        ]
+
+        radar_data = []
+        for ticker in tickers:
+            etf_data = df[df["ticker"] == ticker].copy()
+            etf_data.set_index("date", inplace=True)
+            returns = calculate_returns(etf_data["close"])
+
+            values = [
+                returns.mean() * 252,  # Rendement annualisé
+                calculate_volatility(returns).iloc[-1],  # Volatilité
+                calculate_sharpe_ratio(returns, risk_free_rate).iloc[-1],  # Sharpe
+                calculate_sortino_ratio(returns, risk_free_rate).iloc[-1],  # Sortino
+                calculate_beta(returns, spy_returns).iloc[-1],  # Beta
+                calculate_tracking_error(returns, spy_returns).iloc[
+                    -1
+                ],  # Tracking Error
+            ]
+
+            radar_data.append(
+                go.Scatterpolar(
+                    r=values,
+                    theta=radar_metrics,
+                    name=f"{ticker} - {etf_names[ticker]}",
+                    fill="toself",
+                )
+            )
+
+        radar_fig = go.Figure(data=radar_data)
+        radar_fig.update_layout(
+            polar=dict(
+                radialaxis=dict(
+                    visible=True,
+                    showticklabels=False,  # Cache les valeurs numériques
+                )
+            ),
+            showlegend=True,
+            title="Comparaison des métriques",
+        )
+        st.plotly_chart(radar_fig)
+
         # Légende des métriques
         st.caption(
             """
