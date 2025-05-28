@@ -12,12 +12,14 @@ Ce projet permet d'analyser et de comparer des ETF en utilisant des données his
 ## Installation
 
 1. Créer un environnement virtuel :
+
 ```bash
 python -m venv venv
 source venv/bin/activate  # Sur Unix/macOS
 ```
 
 2. Installer les dépendances :
+
 ```bash
 pip install -r requirements.txt
 ```
@@ -25,11 +27,13 @@ pip install -r requirements.txt
 ## Utilisation
 
 1. Récupérer les données :
+
 ```bash
 python run_etl_script.py
 ```
 
 2. Lancer l'application Streamlit :
+
 ```bash
 streamlit run main.py
 ```
