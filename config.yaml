@@ -1,0 +1,31 @@
+# Configuration du projet ETF
+
+# Chemin de la base de données
+database:
+  path: "data/etf_portfolio.db"
+
+# Paramètres de données historiques
+date_range:
+  start: "2020-01-01"
+  end: "2025-05-28"
+
+# Liste des ETF à suivre
+etfs:
+  - ticker: "SPY"
+    name: "SPDR S&P 500 ETF Trust"
+    theme: "Large Cap US"
+  - ticker: "QQQ"
+    name: "Invesco QQQ Trust"
+    theme: "Technology"
+  - ticker: "IWM"
+    name: "iShares Russell 2000 ETF"
+    theme: "Small Cap US"
+  - ticker: "VGK"
+    name: "Vanguard FTSE Europe ETF"
+    theme: "Europe"
+  - ticker: "EEM"
+    name: "iShares MSCI Emerging Markets ETF"
+    theme: "Emerging Markets"
+  - ticker: "GLD"
+    name: "SPDR Gold Shares"
+    theme: "Commodities"
