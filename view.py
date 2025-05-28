@@ -1,5 +1,7 @@
 """
-Module de visualisation utilisant Streamlit.
+Module de visualisation utilisant Streamlit pour l'interface utilisateur de l'application ETF.
+Fournit des fonctions pour afficher des analyses individuelles et des comparaisons d'ETF
+avec des graphiques interactifs et des métriques financières.
 """
 
 from typing import List
@@ -11,20 +13,26 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from helpers_analysis import (
-    calculate_beta,
     calculate_cumulative_returns,
     calculate_max_drawdown,
     calculate_returns,
     calculate_sharpe_ratio,
     calculate_sortino_ratio,
-    calculate_tracking_error,
     calculate_volatility,
     normalize_prices,
 )
 
 
 def display_etf_analysis(df: pd.DataFrame, etf_label: str, risk_free_rate: float):
-    """Affiche l'analyse d'un ETF individuel."""
+    """Affiche l'analyse détaillée d'un ETF individuel avec graphiques et métriques.
+
+    :param df: DataFrame contenant les données de l'ETF (prix, volume, etc.)
+    :type df: pd.DataFrame
+    :param etf_label: Label de l'ETF au format "TICKER - Nom"
+    :type etf_label: str
+    :param risk_free_rate: Taux sans risque utilisé pour les calculs de ratios
+    :type risk_free_rate: float
+    """
     st.subheader(f"Analyse de {etf_label}")
 
     # Extraction du ticker du label
@@ -67,7 +75,22 @@ def display_etf_analysis(df: pd.DataFrame, etf_label: str, risk_free_rate: float
 
 
 def display_etf_comparison(df: pd.DataFrame, tickers: List[str], risk_free_rate: float):
-    """Affiche la comparaison entre plusieurs ETF."""
+    """Affiche une comparaison interactive entre plusieurs ETF.
+
+    Inclut:
+    - Performance relative (base 100)
+    - Graphique risque/rendement
+    - Matrice de corrélation
+    - Tableau de métriques comparatives
+    - Graphique radar des métriques normalisées
+
+    :param df: DataFrame contenant les données de tous les ETF
+    :type df: pd.DataFrame
+    :param tickers: Liste des tickers des ETF à comparer
+    :type tickers: List[str]
+    :param risk_free_rate: Taux sans risque pour les calculs de ratios
+    :type risk_free_rate: float
+    """
     st.subheader("Comparaison des ETF")
 
     # Obtenir les noms complets des ETF

@@ -1,10 +1,10 @@
-# run_etl_script.py
+import time  # Pour les pauses si besoin
+
+import pandas as pd
 
 from config_loader import load_config
-from etl import process_all_etfs 
+from etl import process_all_etfs
 from repository import EtfRepository
-import pandas as pd 
-import time # Pour les pauses si besoin
 
 
 def main():
@@ -39,18 +39,24 @@ def main():
         print("Aucune métadonnée à sauvegarder.")
 
     # Sauvegarde des données de prix
-    if list_of_df_prices: # S'assurer que la liste n'est pas vide
-        print(f"Préparation pour la sauvegarde des données de prix pour {len(list_of_df_prices)} ETF(s)...")
+    if list_of_df_prices:  # S'assurer que la liste n'est pas vide
+        print(
+            f"Préparation pour la sauvegarde des données de prix pour {len(list_of_df_prices)} ETF(s)..."
+        )
         # Concaténer tous les dataframes de prix en un seul pour une insertion unique (plus efficace)
         all_prices_concatenated = pd.concat(list_of_df_prices, ignore_index=True)
         if not all_prices_concatenated.empty:
             print("Sauvegarde des données de prix concaténées...")
             repository.save_etf_prices(all_prices_concatenated)
         else:
-            print("Le DataFrame de prix concaténé est vide. Aucune donnée de prix sauvegardée.")
+            print(
+                "Le DataFrame de prix concaténé est vide. Aucune donnée de prix sauvegardée."
+            )
     else:
-        print("Aucune donnée de prix à sauvegarder (la liste des DataFrames de prix est vide).")
-        
+        print(
+            "Aucune donnée de prix à sauvegarder (la liste des DataFrames de prix est vide)."
+        )
+
     print("--- ETL terminé avec succès. ---")
 
 

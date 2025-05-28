@@ -10,7 +10,14 @@ import pandas as pd
 
 
 def get_date_range(period: str) -> Tuple[datetime, datetime]:
-    """Calcule les dates de début et fin en fonction de la période sélectionnée."""
+    """Calcule les dates de début et fin en fonction de la période sélectionnée.
+    Supporte les périodes : 1m, 3m, 6m, YTD, 1a, 3a, 5a, MAX.
+
+    :param period: Le code de la période (ex: '1m' pour 1 mois)
+    :type period: str
+    :return: Un tuple contenant (date_début, date_fin)
+    :rtype: Tuple[datetime, datetime]
+    """
     end_date = datetime.now()
     start_date = end_date  # sera modifié ci-dessous
 
@@ -29,31 +36,62 @@ def get_date_range(period: str) -> Tuple[datetime, datetime]:
     elif period == "5a":
         start_date = end_date - timedelta(days=365 * 5)
     elif period == "MAX":
-        start_date = datetime(2000, 1, 1)  # Une date suffisamment ancienne
+        start_date = datetime(2010, 1, 1)
 
     return start_date, end_date
 
 
 def calculate_returns(prices: pd.Series) -> pd.Series:
-    """Calcule les rendements journaliers."""
+    """Calcule les rendements journaliers d'une série de prix.
+
+    :param prices: Série temporelle des prix de clôture
+    :type prices: pd.Series
+    :return: Série des rendements journaliers
+    :rtype: pd.Series
+    """
     return prices.pct_change()
 
 
 def calculate_cumulative_returns(prices: pd.Series) -> pd.Series:
-    """Calcule les rendements cumulés."""
+    """Calcule les rendements cumulés à partir d'une série de prix.
+    La fonction utilise la formule (1 + r1)(1 + r2)...(1 + rn) - 1.
+
+    :param prices: Série temporelle des prix de clôture
+    :type prices: pd.Series
+    :return: Série des rendements cumulés
+    :rtype: pd.Series
+    """
     returns = calculate_returns(prices)
     return (1 + returns).cumprod() - 1
 
 
 def calculate_volatility(returns: pd.Series, window: int = 252) -> pd.Series:
-    """Calcule la volatilité glissante."""
+    """Calcule la volatilité glissante annualisée des rendements.
+
+    :param returns: Série des rendements journaliers
+    :type returns: pd.Series
+    :param window: Fenêtre de calcul en jours (252 jours = 1 an boursier)
+    :type window: int
+    :return: Série de la volatilité glissante annualisée
+    :rtype: pd.Series
+    """
     return returns.rolling(window=window).std() * np.sqrt(window)
 
 
 def calculate_sharpe_ratio(
     returns: pd.Series, risk_free_rate: float = 0.02, window: int = 252
 ) -> pd.Series:
-    """Calcule le ratio de Sharpe glissant."""
+    """Calcule le ratio de Sharpe glissant, qui mesure le rendement excédentaire par unité de risque.
+
+    :param returns: Série des rendements journaliers
+    :type returns: pd.Series
+    :param risk_free_rate: Taux sans risque annuel (par défaut 2%)
+    :type risk_free_rate: float
+    :param window: Fenêtre de calcul en jours (252 jours = 1 an boursier)
+    :type window: int
+    :return: Série du ratio de Sharpe glissant
+    :rtype: pd.Series
+    """
     excess_returns = returns - risk_free_rate / window
     return (excess_returns.rolling(window=window).mean() * window) / (
         returns.rolling(window=window).std() * np.sqrt(window)
@@ -63,7 +101,17 @@ def calculate_sharpe_ratio(
 def calculate_sortino_ratio(
     returns: pd.Series, risk_free_rate: float = 0.02, window: int = 252
 ) -> pd.Series:
-    """Calcule le ratio de Sortino glissant (comme Sharpe mais ne pénalise que la volatilité négative)."""
+    """Calcule le ratio de Sortino glissant, qui mesure le rendement excédentaire par unité de risque baissier.
+
+    :param returns: Série des rendements journaliers
+    :type returns: pd.Series
+    :param risk_free_rate: Taux sans risque annuel (par défaut 2%)
+    :type risk_free_rate: float
+    :param window: Fenêtre de calcul en jours (252 jours = 1 an boursier)
+    :type window: int
+    :return: Série du ratio de Sortino glissant
+    :rtype: pd.Series
+    """
     excess_returns = returns - risk_free_rate / window
     downside_returns = returns.copy()
     downside_returns[downside_returns > 0] = 0
@@ -72,30 +120,30 @@ def calculate_sortino_ratio(
 
 
 def calculate_max_drawdown(prices: pd.Series) -> float:
-    """Calcule le drawdown maximum sur toute la période."""
+    """Calcule le drawdown (perte maximale) à partir des prix historiques.
+    Le drawdown mesure la perte en pourcentage depuis le plus haut historique.
+
+    :param prices: Série temporelle des prix de clôture
+    :type prices: pd.Series
+    :return: Série des drawdowns en pourcentage
+    :rtype: pd.Series
+    """
     rolling_max = prices.expanding().max()
     drawdowns = prices / rolling_max - 1
     return drawdowns.min()
 
 
-def calculate_beta(
-    returns: pd.Series, market_returns: pd.Series, window: int = 252
-) -> pd.Series:
-    """Calcule le beta glissant par rapport au marché (SPY)."""
-    covariance = returns.rolling(window=window).cov(market_returns)
-    market_variance = market_returns.rolling(window=window).var()
-    return covariance / market_variance
-
-
-def calculate_tracking_error(
-    returns: pd.Series, benchmark_returns: pd.Series, window: int = 252
-) -> pd.Series:
-    """Calcule l'erreur de suivi (tracking error) par rapport à un benchmark."""
-    return (returns - benchmark_returns).rolling(window=window).std() * np.sqrt(window)
-
-
 def normalize_prices(df: pd.DataFrame, tickers: List[str]) -> pd.DataFrame:
-    """Normalise les prix de plusieurs ETF pour comparaison."""
+    """Normalise les prix de plusieurs ETF pour permettre une comparaison visuelle.
+    Les prix sont indexés à 100 à la première date pour faciliter la comparaison de performance.
+
+    :param df: DataFrame contenant les données de prix avec colonnes 'date', 'ticker' et 'close'
+    :type df: pd.DataFrame
+    :param tickers: Liste des codes des ETF à normaliser
+    :type tickers: List[str]
+    :return: DataFrame avec les prix normalisés, indexé par date avec une colonne par ETF
+    :rtype: pd.DataFrame
+    """
     df = df.sort_values(
         "date"
     )  # S'assure que les données sont dans l'ordre chronologique
@@ -111,23 +159,11 @@ def normalize_prices(df: pd.DataFrame, tickers: List[str]) -> pd.DataFrame:
 
 
 def calculate_correlation_matrix(returns_df: pd.DataFrame) -> pd.DataFrame:
-    """Calcule la matrice de corrélation entre les ETF."""
+    """Calcule la matrice de corrélation des rendements entre les différents ETF.
+
+    :param returns_df: DataFrame contenant les données de prix avec colonnes 'date', 'ticker' et 'close'
+    :type returns_df: pd.DataFrame
+    :return: Matrice de corrélation des rendements entre les ETF
+    :rtype: pd.DataFrame
+    """
     return returns_df.pivot(columns="ticker", values="close").pct_change().corr()
-
-
-def calculate_sortino_ratio(
-    returns: pd.Series, risk_free_rate: float = 0.02, window: int = 252
-) -> pd.Series:
-    """Calcule le ratio de Sortino glissant (comme Sharpe mais ne pénalise que la volatilité négative)."""
-    excess_returns = returns - risk_free_rate / window
-    downside_returns = returns.copy()
-    downside_returns[downside_returns > 0] = 0
-    downside_std = downside_returns.rolling(window=window).std() * np.sqrt(window)
-    return (excess_returns.rolling(window=window).mean() * window) / downside_std
-
-
-def calculate_max_drawdown(prices: pd.Series) -> float:
-    """Calcule le drawdown maximum sur toute la période."""
-    rolling_max = prices.expanding().max()
-    drawdowns = prices / rolling_max - 1
-    return drawdowns.min()
