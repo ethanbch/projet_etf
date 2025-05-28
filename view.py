@@ -13,14 +13,18 @@ import streamlit as st
 from helpers_analysis import (
     calculate_cumulative_returns,
     calculate_returns,
+    calculate_sharpe_ratio,
     calculate_volatility,
     normalize_prices,
 )
 
 
-def display_etf_analysis(df: pd.DataFrame, ticker: str):
+def display_etf_analysis(df: pd.DataFrame, etf_label: str, risk_free_rate: float):
     """Affiche l'analyse d'un ETF individuel."""
-    st.subheader(f"Analyse de {ticker}")
+    st.subheader(f"Analyse de {etf_label}")
+
+    # Extraction du ticker du label
+    ticker = etf_label.split(" - ")[0]
 
     # Filtrer les données pour l'ETF sélectionné
     etf_data = df[df["ticker"] == ticker].copy()
@@ -37,11 +41,12 @@ def display_etf_analysis(df: pd.DataFrame, ticker: str):
     st.plotly_chart(fig)
 
     # Métriques clés
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
 
     returns = calculate_returns(etf_data["close"])
     cum_returns = calculate_cumulative_returns(etf_data["close"])
     volatility = calculate_volatility(returns)
+    sharpe = calculate_sharpe_ratio(returns, risk_free_rate).iloc[-1]
 
     with col1:
         st.metric("Rendement total", f"{cum_returns.iloc[-1]:.2%}")
@@ -49,11 +54,18 @@ def display_etf_analysis(df: pd.DataFrame, ticker: str):
         st.metric("Rendement annualisé", f"{returns.mean() * 252:.2%}")
     with col3:
         st.metric("Volatilité annualisée", f"{volatility.iloc[-1]:.2%}")
+    with col4:
+        st.metric("Ratio de Sharpe", f"{sharpe:.2f}")
 
 
-def display_etf_comparison(df: pd.DataFrame, tickers: List[str]):
+def display_etf_comparison(df: pd.DataFrame, tickers: List[str], risk_free_rate: float):
     """Affiche la comparaison entre plusieurs ETF."""
     st.subheader("Comparaison des ETF")
+
+    # Obtenir les noms complets des ETF
+    etf_names = {
+        ticker: df[df["ticker"] == ticker]["name"].iloc[0] for ticker in tickers
+    }
 
     # Onglets pour différentes visualisations
     tab1, tab2, tab3, tab4 = st.tabs(
@@ -73,7 +85,10 @@ def display_etf_comparison(df: pd.DataFrame, tickers: List[str]):
         for ticker in tickers:
             fig.add_trace(
                 go.Scatter(
-                    x=normalized.index, y=normalized[ticker], mode="lines", name=ticker
+                    x=normalized.index,
+                    y=normalized[ticker],
+                    mode="lines",
+                    name=f"{ticker} - {etf_names[ticker]}",
                 )
             )
         fig.update_layout(
@@ -93,7 +108,7 @@ def display_etf_comparison(df: pd.DataFrame, tickers: List[str]):
             annualized_volatility = returns.std() * np.sqrt(252)
             risk_return_data.append(
                 {
-                    "ETF": ticker,
+                    "ETF": f"{ticker} - {etf_names[ticker]}",
                     "Volatilité annualisée (%)": annualized_volatility * 100,
                     "Rendement annualisé (%)": annualized_return * 100,
                 }
@@ -124,6 +139,12 @@ def display_etf_comparison(df: pd.DataFrame, tickers: List[str]):
         returns_df = df.pivot(columns="ticker", values="close").pct_change().dropna()
         corr_matrix = returns_df.corr()
 
+        # Renommer les colonnes/index avec les noms complets
+        corr_matrix.columns = [
+            f"{ticker} - {etf_names[ticker]}" for ticker in corr_matrix.columns
+        ]
+        corr_matrix.index = corr_matrix.columns
+
         fig = px.imshow(
             corr_matrix,
             labels=dict(color="Corrélation"),
@@ -141,13 +162,15 @@ def display_etf_comparison(df: pd.DataFrame, tickers: List[str]):
             returns = calculate_returns(etf_data)
             cum_returns = calculate_cumulative_returns(etf_data)
             volatility = calculate_volatility(returns)
+            sharpe = calculate_sharpe_ratio(returns, risk_free_rate).iloc[-1]
 
             comparison_data.append(
                 {
-                    "ETF": ticker,
+                    "ETF": f"{ticker} - {etf_names[ticker]}",
                     "Rendement total": f"{cum_returns.iloc[-1]:.2%}",
                     "Rendement annualisé": f"{returns.mean() * 252:.2%}",
                     "Volatilité annualisée": f"{volatility.iloc[-1]:.2%}",
+                    "Ratio de Sharpe": f"{sharpe:.2f}",
                 }
             )
 

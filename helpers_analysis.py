@@ -60,10 +60,17 @@ def calculate_sharpe_ratio(
 
 def normalize_prices(df: pd.DataFrame, tickers: List[str]) -> pd.DataFrame:
     """Normalise les prix de plusieurs ETF pour comparaison."""
-    normalized = pd.DataFrame(index=df.index)
+    df = df.sort_values(
+        "date"
+    )  # S'assure que les données sont dans l'ordre chronologique
+    normalized = pd.DataFrame()
+
     for ticker in tickers:
-        price_data = df[df["ticker"] == ticker]["close"]
-        normalized[ticker] = price_data / price_data.iloc[0] * 100
+        ticker_data = df[df["ticker"] == ticker][["date", "close"]].copy()
+        ticker_data.set_index("date", inplace=True)
+        ticker_data = ticker_data / ticker_data.iloc[0] * 100
+        normalized[ticker] = ticker_data["close"]
+
     return normalized
 
 
