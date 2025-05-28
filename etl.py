@@ -35,7 +35,6 @@ def extract_etf_data(ticker: str, start_date: str, end_date: str) -> pd.DataFram
                 f"  Attention : Aucune donnée trouvée pour {ticker} pour la période spécifiée."
             )
             return pd.DataFrame()
-        # S'assurer que l'index est bien datetime et sans timezone pour la compatibilité SQLite
         if isinstance(df.index, pd.DatetimeIndex):
             df.index = df.index.tz_localize(None)
         print(f"  Données extraites pour {ticker}: {len(df)} lignes.")
@@ -63,7 +62,6 @@ def transform_price_data(df_raw: pd.DataFrame, ticker: str) -> pd.DataFrame:
 
     df = df_raw.reset_index().copy()
 
-    # Standardisation des noms de colonnes
     rename_map = {
         "Date": "date",
         "Open": "open",
@@ -89,7 +87,6 @@ def transform_price_data(df_raw: pd.DataFrame, ticker: str) -> pd.DataFrame:
     df["ticker"] = ticker
 
     # Sélectionner uniquement les colonnes qui seront dans la table etf_prices
-    # Assure-toi que ces noms de colonnes correspondent à ceux définis dans repository.py pour la table etf_prices
     price_columns = [
         "date",
         "ticker",
@@ -103,7 +100,7 @@ def transform_price_data(df_raw: pd.DataFrame, ticker: str) -> pd.DataFrame:
         "capital_gains",
     ]
 
-    # Garder seulement les colonnes existantes pour éviter les erreurs
+    # On garde seulement les colonnes existantes pour éviter les erreurs
     existing_price_columns = [col for col in price_columns if col in df.columns]
 
     return df[existing_price_columns]

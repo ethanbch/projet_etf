@@ -19,7 +19,7 @@ def get_date_range(period: str) -> Tuple[datetime, datetime]:
     :rtype: Tuple[datetime, datetime]
     """
     end_date = datetime.now()
-    start_date = end_date  # sera modifié ci-dessous
+    start_date = end_date
 
     if period == "1m":
         start_date = end_date - timedelta(days=30)

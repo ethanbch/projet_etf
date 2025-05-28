@@ -1,4 +1,4 @@
-import pandas as pd  # Assure-toi que c'est importé
+import pandas as pd
 import streamlit as st
 
 from config_loader import load_config  # Nécessaire pour initialiser EtfRepository
@@ -21,7 +21,7 @@ def main():
 
     repository = EtfRepository(config)  # Passe la config chargée
 
-    # --- Récupération des informations des ETF pour les sélecteurs ---
+    # Récupération des informations des ETF pour les sélecteurs
     etf_info_df = repository.get_all_etf_info_for_selection()
 
     if etf_info_df.empty:
@@ -31,19 +31,16 @@ def main():
         )
         return  # Arrêter l'exécution si pas de métadonnées
 
-    # Création des labels pour les ETF à partir des données du repository
-    # Format: "TICKER - Nom Complet de l'ETF"
-    etf_labels_map = {  # Renommé pour plus de clarté (map de ticker vers label)
+    etf_labels_map = {  # Renommé pour plus de clarté
         row["ticker"]: f"{row['ticker']} - {row['name']}"
         for _, row in etf_info_df.iterrows()
     }
-    # Liste des labels formatés pour les widgets Streamlit
     display_labels_options = list(etf_labels_map.values())
 
     # Mapping inverse pour retrouver le ticker à partir du label sélectionné
     ticker_from_label_map = {v: k for k, v in etf_labels_map.items()}
 
-    # --- Sidebar pour la navigation et les paramètres ---
+    # Sidebar pour la navigation et les paramètres
     with st.sidebar:
         st.header("Navigation")
         page = st.radio(
@@ -57,16 +54,14 @@ def main():
 
         # Sélection de la période
         periods = ["1m", "3m", "6m", "YTD", "1a", "3a", "5a", "MAX"]
-        selected_period_label = st.select_slider(  # Renommé pour clarté
-            "Période", options=periods, value="1a"  # Valeur par défaut : 1 an
-        )
+        selected_period_label = st.select_slider("Période", options=periods, value="1a")
 
         # Sélection du taux sans risque
-        risk_free_rate_percentage = st.slider(  # Renommé pour clarté
+        risk_free_rate_percentage = st.slider(
             "Taux sans risque (%)",
             min_value=0.0,
             max_value=5.0,
-            value=2.0,  # Taux par défaut en pourcentage
+            value=2.0,
             step=0.1,
             help="Taux annuel utilisé pour le calcul des ratios de Sharpe et Sortino.",
         )

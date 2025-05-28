@@ -21,7 +21,7 @@ def main():
     print("Initialisation du repository de base de données...")
     repository = EtfRepository(config)
 
-    # Optionnel mais recommandé pour un ETL propre à chaque fois : supprimer les anciennes tables
+    # Supprimer les anciennes tables
     repository.drop_tables_if_exist()
     # Réinitialiser la structure de la base de données avec les nouvelles tables
     repository.init_database()
