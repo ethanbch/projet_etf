@@ -37,7 +37,10 @@ def transform_etf_data(df: pd.DataFrame, etf_info: EtfConfig) -> pd.DataFrame:
         'High': 'high',
         'Low': 'low',
         'Close': 'close',
-        'Volume': 'volume'
+        'Volume': 'volume',
+        'Dividends': 'dividends',
+        'Stock Splits': 'stock_splits',
+        'Capital Gains': 'capital_gains'
     })
     
     # Ajout des informations de l'ETF

@@ -31,6 +31,9 @@ class EtfRepository:
                     low REAL,
                     close REAL,
                     volume INTEGER,
+                    dividends REAL,
+                    stock_splits REAL,
+                    capital_gains REAL,
                     PRIMARY KEY (date, ticker)
                 )
             """))
