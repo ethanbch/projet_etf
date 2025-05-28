@@ -131,19 +131,3 @@ def calculate_max_drawdown(prices: pd.Series) -> float:
     rolling_max = prices.expanding().max()
     drawdowns = prices / rolling_max - 1
     return drawdowns.min()
-
-
-def calculate_beta(
-    returns: pd.Series, market_returns: pd.Series, window: int = 252
-) -> pd.Series:
-    """Calcule le beta glissant par rapport au marché (SPY)."""
-    covariance = returns.rolling(window=window).cov(market_returns)
-    market_variance = market_returns.rolling(window=window).var()
-    return covariance / market_variance
-
-
-def calculate_tracking_error(
-    returns: pd.Series, benchmark_returns: pd.Series, window: int = 252
-) -> pd.Series:
-    """Calcule l'erreur de suivi (tracking error) par rapport à un benchmark."""
-    return (returns - benchmark_returns).rolling(window=window).std() * np.sqrt(window)

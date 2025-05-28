@@ -142,54 +142,81 @@ def display_etf_comparison(df: pd.DataFrame, tickers: List[str], risk_free_rate:
         )
         st.plotly_chart(fig)
 
-    with tab3:
-        # Matrice de corrélation
-        returns_df = df.pivot(columns="ticker", values="close").pct_change().dropna()
-        corr_matrix = returns_df.corr()
+    with tab3:  # Onglet "Corrélations"
+        st.subheader("Matrice de Corrélation des Rendements")
 
-        st.caption(
-            "Une corrélation proche de 1 indique que les ETFs évoluent de manière similaire, proche de -1 de manière opposée, et proche de 0 de manière indépendante."
-        )
+        if df.empty or not tickers or len(tickers) < 2:
+            st.warning(
+                "Sélectionnez au moins deux ETFs avec des données pour la corrélation."
+            )
+        else:
+            correlation_input_df = df[["date", "ticker", "close"]].copy()
+            correlation_input_df["date"] = pd.to_datetime(correlation_input_df["date"])
 
-        # Renommer les colonnes/index avec les noms complets
-        corr_matrix.columns = [
-            f"{ticker} - {etf_names[ticker]}" for ticker in corr_matrix.columns
-        ]
-        corr_matrix.index = corr_matrix.columns
+            try:
+                pivot_prices_df = correlation_input_df.pivot_table(
+                    index="date", columns="ticker", values="close"
+                )
+                daily_returns_df = pivot_prices_df.pct_change().dropna(how="all")
 
-        fig = px.imshow(
-            corr_matrix,
-            labels=dict(color="Corrélation"),
-            color_continuous_scale="RdBu",
-            aspect="auto",
-        )
-        fig.update_layout(title="Matrice de corrélation")
-        st.plotly_chart(fig)
+                if daily_returns_df.empty or daily_returns_df.shape[1] < 2:
+                    st.warning(
+                        "Pas assez de données de rendements pour la corrélation."
+                    )
+                else:
+                    corr_matrix = daily_returns_df.corr()
+                    labels_for_matrix = corr_matrix.columns.tolist()
+
+                    corr_matrix_for_display = corr_matrix.copy()
+                    corr_matrix_for_display.columns = labels_for_matrix
+                    corr_matrix_for_display.index = labels_for_matrix
+
+                    fig_corr = px.imshow(
+                        corr_matrix_for_display,
+                        labels=dict(color="Corrélation"),
+                        text_auto=".2f",
+                        color_continuous_scale="RdBu",
+                        zmin=-1,
+                        zmax=1,
+                        aspect="auto",
+                    )
+                    fig_corr.update_layout(title_text="Matrice de Corrélation")
+                    st.plotly_chart(fig_corr, use_container_width=True)
+            except Exception as e:
+                st.error(f"Erreur lors du calcul de la corrélation : {e}")
 
     with tab4:
         st.subheader("Métriques de comparaison")
 
-        # Récupération des données du SPY pour le calcul du beta
-        spy_data = df[df["ticker"] == "SPY"].copy()
-        spy_data.set_index("date", inplace=True)
-        spy_returns = calculate_returns(spy_data["close"])
-
         # Préparation des données pour le tableau
         metrics_data = []
+        all_metrics_values = {
+            "returns": [],
+            "volatility": [],
+            "sharpe": [],
+            "sortino": [],
+            "drawdown": [],
+        }
 
+        # Premier passage pour collecter toutes les valeurs
         for ticker in tickers:
             etf_data = df[df["ticker"] == ticker].copy()
             etf_data.set_index("date", inplace=True)
             returns = calculate_returns(etf_data["close"])
 
             # Calcul des métriques
+            ann_return = returns.mean() * 252
             volatility = calculate_volatility(returns).iloc[-1]
             sharpe = calculate_sharpe_ratio(returns, risk_free_rate).iloc[-1]
             sortino = calculate_sortino_ratio(returns, risk_free_rate).iloc[-1]
             max_dd = calculate_max_drawdown(etf_data["close"])
-            beta = calculate_beta(returns, spy_returns).iloc[-1]
-            tracking_error = calculate_tracking_error(returns, spy_returns).iloc[-1]
-            ann_return = returns.mean() * 252
+
+            # Stockage des valeurs pour normalisation
+            all_metrics_values["returns"].append(ann_return)
+            all_metrics_values["volatility"].append(volatility)
+            all_metrics_values["sharpe"].append(sharpe)
+            all_metrics_values["sortino"].append(sortino)
+            all_metrics_values["drawdown"].append(abs(max_dd))
 
             metrics_data.append(
                 {
@@ -199,8 +226,6 @@ def display_etf_comparison(df: pd.DataFrame, tickers: List[str], risk_free_rate:
                     "Ratio de Sharpe": f"{sharpe:.2f}",
                     "Ratio de Sortino": f"{sortino:.2f}",
                     "Drawdown Max": f"{max_dd:.2%}",
-                    "Beta vs SPY": f"{beta:.2f}",
-                    "Tracking Error": f"{tracking_error:.2%}",
                 }
             )
 
@@ -208,32 +233,44 @@ def display_etf_comparison(df: pd.DataFrame, tickers: List[str], risk_free_rate:
         metrics_df = pd.DataFrame(metrics_data)
         st.dataframe(metrics_df.set_index("ETF"), use_container_width=True)
 
+        # Fonction de normalisation min-max
+        def normalize_minmax(values):
+            min_val = min(values)
+            max_val = max(values)
+            if min_val == max_val:
+                return [1.0] * len(values)
+            return [(x - min_val) / (max_val - min_val) for x in values]
+
+        # Normalisation des métriques
+        normalized_values = {
+            "returns": normalize_minmax(all_metrics_values["returns"]),
+            "volatility": normalize_minmax(
+                [-x for x in all_metrics_values["volatility"]]
+            ),  # Inversion car moins de volatilité est mieux
+            "sharpe": normalize_minmax(all_metrics_values["sharpe"]),
+            "sortino": normalize_minmax(all_metrics_values["sortino"]),
+            "drawdown": normalize_minmax(
+                [-x for x in all_metrics_values["drawdown"]]
+            ),  # Inversion car moins de drawdown est mieux
+        }
+
         # Graphique radar des métriques
-        # Préparation des données pour le radar
         radar_metrics = [
             "Rendement annualisé",
             "Volatilité",
             "Ratio de Sharpe",
             "Ratio de Sortino",
-            "Beta vs SPY",
-            "Tracking Error",
+            "Drawdown Max",
         ]
 
         radar_data = []
-        for ticker in tickers:
-            etf_data = df[df["ticker"] == ticker].copy()
-            etf_data.set_index("date", inplace=True)
-            returns = calculate_returns(etf_data["close"])
-
+        for i, ticker in enumerate(tickers):
             values = [
-                returns.mean() * 252,  # Rendement annualisé
-                calculate_volatility(returns).iloc[-1],  # Volatilité
-                calculate_sharpe_ratio(returns, risk_free_rate).iloc[-1],  # Sharpe
-                calculate_sortino_ratio(returns, risk_free_rate).iloc[-1],  # Sortino
-                calculate_beta(returns, spy_returns).iloc[-1],  # Beta
-                calculate_tracking_error(returns, spy_returns).iloc[
-                    -1
-                ],  # Tracking Error
+                normalized_values["returns"][i],
+                normalized_values["volatility"][i],
+                normalized_values["sharpe"][i],
+                normalized_values["sortino"][i],
+                normalized_values["drawdown"][i],
             ]
 
             radar_data.append(
@@ -251,23 +288,23 @@ def display_etf_comparison(df: pd.DataFrame, tickers: List[str], risk_free_rate:
                 radialaxis=dict(
                     visible=True,
                     showticklabels=False,  # Cache les valeurs numériques
+                    range=[0, 1],  # Force l'échelle de 0 à 1
                 )
             ),
             showlegend=True,
-            title="Comparaison des métriques",
+            title="Comparaison des métriques (normalisées)",
         )
         st.plotly_chart(radar_fig)
 
-        # Légende des métriques
+        # Légende des métriques mise à jour
         st.caption(
             """
         - Rendement annualisé : performance moyenne sur un an
-        - Volatilité : mesure de la variation des rendements
+        - Volatilité : mesure de la variation des rendements (normalisée et inversée : plus c'est haut, moins il y a de volatilité)
         - Ratio de Sharpe : rendement ajusté du risque (> 1 est bon)
         - Ratio de Sortino : comme Sharpe mais ne pénalise que les pertes
-        - Drawdown Max : perte maximale sur la période
-        - Beta vs SPY : sensibilité aux mouvements du S&P 500 (1 = même sensibilité)
-        - Tracking Error : écart de suivi par rapport au S&P 500
+        - Drawdown Max : perte maximale sur la période (normalisée et inversée : plus c'est haut, moins il y a de drawdown)
         - Si certaines métriques sont NaN, essayer de bouger la période et/ou le taux sans risque.
+        - Toutes les métriques sont normalisées sur une échelle de 0 à 1, où 1 représente la meilleure performance relative.
         """
         )
