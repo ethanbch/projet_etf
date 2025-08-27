@@ -11,7 +11,7 @@ https://github.com/ethanbch/projet_etf/tree/master
 1. Cloner le dépôt :
 
 ```bash
-git clone <url_du_depot>
+git clone https://github.com/ethanbch/projet_etf.git
 cd projet_etf # ou en tout cas le chemin où vous avez mis le dossier
 ```
 
