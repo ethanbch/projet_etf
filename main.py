@@ -5,7 +5,21 @@ from config_loader import load_config  # Nécessaire pour initialiser EtfReposit
 from helpers_analysis import get_date_range
 from repository import EtfRepository
 from view import display_etf_analysis, display_etf_comparison
+import os
+from pathlib import Path
 
+def ensure_database_ready():
+    db_file = Path("data/etf_data.db")  # ← mets le vrai nom de ta base ici
+    # Crée le dossier data/ si nécessaire
+    db_file.parent.mkdir(exist_ok=True)
+    
+    # Vérifie si la DB n'existe pas encore
+    if not db_file.exists():
+        print("🧬 Base de données absente. Lancement de run_etl_script.py...")
+        os.system("python run_etl_script.py")
+
+# ✨ Appel au lancement :
+ensure_database_ready()
 
 def main():
     st.set_page_config(layout="wide", page_title="Analyse d'ETF")
